@@ -25,7 +25,7 @@ app.use((_req, res, next) => {
 });
 
 app.use(cors({
-  origin: "http://localhost:3001"
+  origin: `http://localhost:${PORT}`
 }))
 
 // ── Routes ─────────────────────────────────────────────────────
