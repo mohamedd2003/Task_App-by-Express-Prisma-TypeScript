@@ -1,0 +1,529 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Task Manager API",
+    "description": "RESTful API for managing tasks, users, and comments — built with Express 5, TypeScript, Prisma, and SQLite.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Tasks", "description": "Task CRUD operations" },
+    { "name": "Comments", "description": "Task comment management" },
+    { "name": "Users", "description": "User management" }
+  ],
+  "paths": {
+    "/tasks": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "List tasks",
+        "description": "Paginated, filterable, and sortable list of tasks.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 }, "description": "Page number" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 }, "description": "Items per page" },
+          { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/Status" }, "description": "Filter by status" },
+          { "name": "priority", "in": "query", "schema": { "$ref": "#/components/schemas/Priority" }, "description": "Filter by priority" },
+          { "name": "category", "in": "query", "schema": { "$ref": "#/components/schemas/Category" }, "description": "Filter by category" },
+          { "name": "archived", "in": "query", "schema": { "type": "boolean", "default": false }, "description": "Include archived tasks" },
+          { "name": "ownerId", "in": "query", "schema": { "type": "integer", "minimum": 1 }, "description": "Filter by owner ID" },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search in title and description" },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string", "enum": ["createdAt", "updatedAt", "startDate", "dueDate", "priority", "status", "category", "title"], "default": "createdAt" }, "description": "Sort field" },
+          { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }, "description": "Sort order" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated task list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TaskSummary" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "post": {
+        "tags": ["Tasks"],
+        "summary": "Create task",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTaskInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/TaskWithOwner" }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get task by ID",
+        "description": "Returns a single task with owner and comments.",
+        "parameters": [
+          { "$ref": "#/components/parameters/TaskId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/TaskDetail" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "patch": {
+        "tags": ["Tasks"],
+        "summary": "Update task",
+        "description": "Partially update task fields.",
+        "parameters": [
+          { "$ref": "#/components/parameters/TaskId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTaskInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/TaskDetail" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/tasks/{id}/archive": {
+      "patch": {
+        "tags": ["Tasks"],
+        "summary": "Archive task",
+        "description": "Soft-archive a task (sets archived to true). No request body needed.",
+        "parameters": [
+          { "$ref": "#/components/parameters/TaskId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/TaskWithOwner" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/tasks/{id}/comments": {
+      "get": {
+        "tags": ["Comments"],
+        "summary": "List comments for a task",
+        "description": "Returns all comments for the given task, ordered oldest first.",
+        "parameters": [
+          { "$ref": "#/components/parameters/TaskId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Comment" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "post": {
+        "tags": ["Comments"],
+        "summary": "Add comment to a task",
+        "parameters": [
+          { "$ref": "#/components/parameters/TaskId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCommentInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Comment" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List users",
+        "description": "Returns all users sorted alphabetically.",
+        "responses": {
+          "200": {
+            "description": "User list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/UserSummary" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "minimum": 1 },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "TaskId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "minimum": 1 },
+        "description": "Task ID"
+      }
+    },
+    "schemas": {
+      "Status": {
+        "type": "string",
+        "enum": ["BACKLOG", "IN_PROGRESS", "BLOCKED", "DONE"]
+      },
+      "Priority": {
+        "type": "string",
+        "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"]
+      },
+      "Category": {
+        "type": "string",
+        "enum": ["BACKEND", "FRONTEND", "DEVOPS"]
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "message": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "taskId": { "type": "integer" }
+        }
+      },
+      "TaskSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "startDate": { "type": "string", "format": "date-time", "nullable": true },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "archived": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "ownerId": { "type": "integer", "nullable": true },
+          "owner": { "$ref": "#/components/schemas/UserSummary" },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "comments": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "TaskWithOwner": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "startDate": { "type": "string", "format": "date-time", "nullable": true },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "archived": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "ownerId": { "type": "integer", "nullable": true },
+          "owner": { "$ref": "#/components/schemas/UserSummary" }
+        }
+      },
+      "TaskDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/TaskWithOwner" },
+          {
+            "type": "object",
+            "properties": {
+              "comments": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Comment" }
+              }
+            }
+          }
+        ]
+      },
+      "CreateTaskInput": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "description": { "type": "string", "maxLength": 2000 },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "startDate": { "type": "string", "format": "date-time", "description": "ISO 8601 date string" },
+          "dueDate": { "type": "string", "format": "date-time", "description": "ISO 8601 date string" },
+          "ownerId": { "type": "integer", "minimum": 1, "description": "Assigned user ID" }
+        }
+      },
+      "UpdateTaskInput": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "description": { "type": "string", "maxLength": 2000, "nullable": true },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "startDate": { "type": "string", "format": "date-time", "nullable": true },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "ownerId": { "type": "integer", "minimum": 1, "nullable": true }
+        }
+      },
+      "CreateCommentInput": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+        }
+      },
+      "CreateUserInput": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "errorCode": { "type": "integer" }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "errorCode": { "type": "integer", "example": 4001 },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "example": { "title": ["String must contain at least 1 character(s)"] }
+          }
+        }
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "message": "Task not found",
+              "errorCode": 2001
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation failed",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+            "example": {
+              "message": "Validation failed",
+              "errorCode": 4001,
+              "errors": {
+                "title": ["String must contain at least 1 character(s)"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

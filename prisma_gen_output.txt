@@ -1,0 +1,16 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Error: Prisma schema validation - (get-config wasm)
+Error code: P1012
+error: Optional lists are not supported. Use either `Type[]` or `Type?`.
+  -->  prisma\schema.prisma:18
+   | 
+17 |   updatedAt DateTime @updatedAt
+18 |   tasks     Task[]?
+   | 
+
+Validation Error Count: 1
+[Context: getConfig]
+
+Prisma CLI Version : 7.4.2
