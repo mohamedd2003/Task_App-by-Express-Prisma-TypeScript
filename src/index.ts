@@ -3,6 +3,7 @@ import { PORT } from "./secrets.ts";
 import rootRouter from "./routes/index.ts";
 import { errorMiddleware } from "./middlewares/error.ts";
 
+import cors from "cors"
 import { PrismaClient } from "./generated/prisma/client.ts";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
@@ -22,6 +23,10 @@ app.use((_req, res, next) => {
     }
     next();
 });
+
+app.use(cors({
+  origin: "http://localhost:3001"
+}))
 
 // ── Routes ─────────────────────────────────────────────────────
 app.use("/api", rootRouter);
