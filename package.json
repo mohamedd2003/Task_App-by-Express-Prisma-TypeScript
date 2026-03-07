@@ -5,8 +5,10 @@
   "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "migrate": "npx prisma migrate dev",
     "seed": "tsx prisma/seed.ts",
     "reset": "npx prisma migrate reset --force"
