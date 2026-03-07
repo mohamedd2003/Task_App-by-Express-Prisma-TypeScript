@@ -14,10 +14,10 @@ app.use(express.json());
 
 // ── CORS (allow all origins for dev) ───────────────────────────
 app.use(cors({
-  origin: 'http://localhost:3000', // <-- نفس الـ frontend
+  origin: "https://task-app-by-next-type-script.vercel.app/", 
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // لو هتبعت cookies أو auth
+  
 }));
 
 
