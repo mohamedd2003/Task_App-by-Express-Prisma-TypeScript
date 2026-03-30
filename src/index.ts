@@ -14,7 +14,9 @@ app.use(express.json());
 
 // ── CORS (allow all origins for dev) ───────────────────────────
 app.use(cors({
-  origin: "https://task-app-by-next-type-script.vercel.app", 
+  origin: ["https://task-app-by-next-type-script.vercel.app","http://178.104.123.180:3000/",
+    
+  ], 
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   
